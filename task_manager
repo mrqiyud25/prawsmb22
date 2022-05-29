@@ -1,0 +1,315 @@
+<html>
+<head>
+    <title>Task Manager</title>
+    <script src="Libraries_and_Frameworks/vue/vue.js"></script>
+    <style>
+        .drop-zone {
+            background-color: #eee;
+            margin: 10px;
+            padding: 10px;
+            width: 30%;
+            max-width: 200px;
+            float: left;
+        }
+        .drag-elemen {
+            background-image: url("images/task_bg.png");
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: auto;
+            margin-bottom: 10px;
+            padding: 5px;
+            text-align: left;
+            background-color: #ffff91; 
+        }
+    </style>
+</head>
+<body>
+<div id="myApp">
+    <div class="panel" v-if="addViews">
+        <h2>Add New Noted</h2>
+        <form v-on:submit="addItems">
+            <input type="text" placeholder="message" v-model="newMessage">
+            <br>
+            <br>
+            <input type="submit" value="Save Data">
+        </form>
+    </div>
+    
+    <div class="panel" v-if="editViews">
+        <h2>Edit Task</h2>
+
+        <form v-on:submit='editItems'>
+            <input type="text" class="form-control" v-model='editMessage'>
+            <div v-if="viewPIC">
+                <input type="text" class="form-control" v-model='editPIC'>
+            </div>
+            <div v-if="viewID">
+                <input type="text" class="form-control" v-model='editID'>
+            </div>
+            <input type="submit" value="Edit">
+        </form>
+    </div>
+    <!--Status 1-->
+    <div class="drop-zone">
+        <h2>Backlog ({{this.status1().length}})</h2>
+        <div v-for="item in status1()" class="drag-elemen" 
+            draggable @dragstart="startDrag($event, item)">
+            <b>#{{ item.id }}</b>
+            <br>
+            {{ item.message }}
+            <div class="editItem" v-on:click="editItem(item)">
+                <img src="images/ICON_EDIT.png">
+            </div>
+            <div class="deleteItem" v-on:click="deleteItem(item)">
+                <img src="images/ICON_DELETE.png">
+            </div>
+        </div>
+    </div>
+
+    <!--Status 2-->
+    <div class="drop-zone" @drop="onDrop($event, 2)"
+    @dragover.prevent
+    @dragenter.prevent>
+        <h2>In-Progress ({{this.status2().length}})</h2>
+        <div v-for="item in status2()" class="drag-elemen"
+            draggable @dragstart="startDrag($event, item)">
+            <b>#{{ item.id }}</b>
+            <br>
+            {{ item.message }}
+            <br>
+            <b>Start Time</b>
+            <br>
+            {{ item.startTime }}
+            <b>Responsible</b>
+            <br>
+            {{ item.PIC }}
+            <div class="editItem" v-on:click="editItem(item)">
+                <img src="images/ICON_EDIT.png">
+            </div>
+        </div>
+    </div>
+
+    <!--Status 3-->
+    <div class="drop-zone" @drop="onDrop($event, 3)"
+    @dragover.prevent
+    @dragenter.prevent>
+        <h2>Done ({{this.status3().length}})</h2>
+        <div v-for="item in status3()" class="drag-elemen">
+            <b>#{{ item.id }}</b>
+            <br>
+            {{ item.message }}
+            <br>
+            <b>Start Time</b>
+            <br>
+            {{ item.startTime }}
+            <br>
+            <b>End Time</b>
+            <br>
+            {{ item.endTime }}
+            <div class="deleteItem" v-on:click="deleteItem(item)">
+                <img src="images/ICON_DELETE.png">
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
+
+<script>
+    const storageKey = "myAppLocalStorage";
+    new Vue ({
+        el:'#myApp',
+        data() {
+            return {
+                items : [],
+                addViews : true,
+                newMessage: null,
+                editViews: false,
+                viewPIC: false,
+                editMessage: null,
+                editPIC: null,
+                editID: null,
+                viewID: false
+            }
+        },
+        created: function(){
+            this.items = JSON.parse(localStorage.getItem(storageKey))
+            this.localData()
+            this.status1()
+            this.status2()
+            this.status3()
+        },
+        methods: {  
+        startDrag (evt, item) {
+            evt.dataTransfer.dropEffect = 'move'
+            evt.dataTransfer.effectAllowed = 'move'
+            evt.dataTransfer.setData('itemID', item.id)
+            evt.dataTransfer.setData('itemSTATUS', item.status)
+        },
+        onDrop (evt, status) {
+            const itemID = evt.dataTransfer.getData('itemID')
+            const itemSTATUS = evt.dataTransfer.getData('itemSTATUS')
+
+            const item = this.items.find(item => item.id == itemID)
+            item.status = status
+
+            //timestamp
+            var today = new Date().toLocaleString('en-GB', { hour12: false });
+
+            //confirm change column start
+            let column2 = "Confirm To Change Task #" + itemID +" as In-Progress?"
+            let column3 = "Confirm To Change Task #" + itemID +" as Done?"
+            //confirm change column end
+
+            //transfer to column 2
+            if(itemSTATUS == 1 && item.status == 2 && confirm(column2) == true){
+                let person = prompt("Please enter your name", "");
+                
+                if (person == null || person == "") {
+                    alert("Enter Reponsible Name")
+                } else {
+                    alert("Enter Success")
+                }
+                
+                var indexNumber = JSON.parse(localStorage.getItem(storageKey)).findIndex(item => item.id == itemID)
+
+                this.items.push(//this.items
+                    {
+                        id: item.id,
+                        message: item.message,
+                        status: item.status,
+                        startTime: today,
+                        endTime: '',
+                        PIC: person,
+                    },
+                );
+                this.items.splice(indexNumber, 1);
+                this.localData()
+            }//transfer to column 3
+            else if(itemSTATUS == 2 && item.status == 3 && confirm(column3) == true){
+                var indexNumber = JSON.parse(localStorage.getItem(storageKey)).findIndex(item => item.id == itemID)
+
+                this.items.push(//this.items
+                    {
+                        id: item.id,
+                        message: item.message,
+                        status: item.status,
+                        startTime: item.startTime,
+                        endTime: today,
+                        PIC: item.PIC,
+                    },
+                );
+                this.items.splice(indexNumber, 1);
+                this.localData()
+            }
+            else if(item.status - itemSTATUS == 2){
+                alert("Tidak Boleh Langkau")
+                location.reload();
+            }
+
+        },
+        deleteItem: function(item) {
+
+        var delId = item.id
+        let text = "Confirm To Delete Task #" + delId +"?"
+        
+        var indexNumber = JSON.parse(localStorage.getItem(storageKey))
+        .findIndex(item => item.id == delId)
+        
+        if (confirm(text) == true) {
+                                
+            this.items.splice(indexNumber, 1);
+            this.localData()
+            text = "Delete Successfull";
+
+        } else {
+            text = "You canceled!";
+        }
+            
+        },
+        editItem: function(item) {
+            this.addViews = false
+            this.editViews = true
+            
+            var editId = item.id
+            
+            if(item.status == 1){
+                this.editMessage = item.message
+                this.editID = item.id
+                this.editPIC = item.PIC
+            }
+            else if(item.status == 2){
+                this.viewPIC = true
+                this.editMessage = item.message
+                this.editID = item.id
+                this.editPIC = item.PIC
+            }
+        },
+        editItems: function() {
+            
+        var indexNumber = JSON.parse(localStorage.
+        getItem(storageKey)).findIndex(item => item.id == this.editID)
+        
+        const item = this.items.find(item => item.id == this.editID)
+        
+        this.items.push(
+            {
+                id: this.editID,
+                message: this.editMessage,
+                status: item.status,
+                startTime: item.startTime,
+                endTime: item.startTime,
+                PIC: this.editPIC,
+            });
+        this.items.splice(indexNumber, 1);
+        this.localData()
+        },
+        status1: function() {
+            return this.items.filter(item => item.status === 1)
+        },
+        status2: function() {
+            return this.items.filter(item => item.status === 2)
+        },
+        status3: function() {
+            return this.items.filter(item => item.status === 3)
+        },
+        addItems: function() {
+            var primaryKey = 0
+            
+            if (localStorage.getItem(storageKey) != undefined) {
+            var totalData = JSON.parse(localStorage.getItem(storageKey))
+
+            for(var i = 0; i < totalData.length; i++) {
+                var current = totalData[i].id;
+                
+                if(current > primaryKey){
+                    primaryKey = current
+                }
+            }
+            }
+
+            this.items.push(
+            {
+                id: primaryKey+1, //nilai id terakhir ditambah 1
+                message: this.newMessage, //input dari tambah data
+                status: 1, //foreign key
+                startTime: "", //start time ada data jika status=2
+                endTime: "", //end time ada data jika status=3
+                PIC: "", //PIC ada data jika status=2
+            });
+            this.localData()
+        },
+        localData: function() {
+                if (localStorage.getItem(storageKey) == null) {
+                    this.items = []
+                }
+                    //convert kepada javascript object
+                    let saveItem = JSON.stringify(this.items);
+                    //simpan dalam local storage
+                    localStorage.setItem(storageKey, saveItem);
+                    this.$forceUpdate();
+            },
+        },
+
+    });
+</script>
